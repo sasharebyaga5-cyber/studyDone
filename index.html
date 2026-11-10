@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>StudyFlow — учёба без хаоса</title>
+<meta name="description" content="StudyFlow: задачи, дедлайны, прогресс и настраиваемый таймер фокуса для студентов.">
+<style>
+:root{
+  --bg:#040816; --bg2:#0a1230; --ink:#f7f1e4; --muted:#b6c0dc; --blue:#7cb4ff; --blue-soft:rgba(124,180,255,.18);
+  --glass:rgba(255,255,255,.045); --line:rgba(255,255,255,.12); --warn:#ffcf8a; --ok:#8fe3c0; --danger:#ff9a9a;
+  --serif:Georgia,"Times New Roman",serif; --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --sans:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;scroll-padding-top:84px;color-scheme:dark}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.75;font-size:17px;overflow-x:hidden;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+/* зерно в духе печатной графики */
+body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:200;opacity:.03;mix-blend-mode:screen;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--blue);outline-offset:3px;border-radius:8px}
+.container{width:min(1120px,100% - 40px);margin-inline:auto}
+section{padding:88px 0;position:relative}
+h1,h2,h3{font-family:var(--serif);font-weight:400;line-height:1.1}
+h1{font-size:clamp(2.6rem,6vw,4.8rem);font-style:italic;text-transform:uppercase;letter-spacing:-.03em}
+h2{font-size:clamp(2rem,5vw,3.2rem);font-style:italic;letter-spacing:-.02em;margin-bottom:20px}
+h3{font-size:1.45rem;font-style:italic;margin-bottom:12px}
+.lead{font-family:var(--mono);font-size:1rem;line-height:1.8;color:#c3cde8;max-width:60ch}
+.center{text-align:center}.center .lead{margin-inline:auto}
+.section-head{margin-bottom:56px}
+
+/* метка раздела — пилюля с линиями */
+.tag{display:inline-flex;align-items:center;gap:12px;margin-bottom:22px;font-size:.9rem;color:var(--ink)}
+.tag::before,.tag::after{content:"";width:56px;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.5))}
+.tag::after{transform:scaleX(-1)}
+.tag span{padding:6px 18px;border:1px solid var(--line);border-radius:999px;background:var(--glass)}
+
+/* кнопки */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:12px 26px;border:1px solid transparent;border-radius:999px;font:600 .95rem var(--sans);cursor:pointer;text-decoration:none;transition:transform .2s,background .2s,color .2s,box-shadow .2s}
+.btn:hover{transform:translateY(-2px)}
+.btn:active{transform:none}
+.btn-quiet{background:transparent;color:var(--muted);padding-inline:12px;text-decoration:underline;text-underline-offset:5px}
+.btn-quiet:hover{color:var(--ink);transform:none}
+.btn-primary{background:var(--ink);color:var(--bg);box-shadow:0 0 0 0 rgba(106,168,255,.5)}
+.btn-primary:hover{box-shadow:0 0 28px 2px rgba(106,168,255,.45)}
+.btn-ghost{background:transparent;color:var(--ink);border-color:rgba(239,232,218,.45)}
+.btn-ghost:hover{background:var(--ink);color:var(--bg)}
+.btn-small{min-height:44px;padding:8px 20px}
+
+/* шапка */
+.site-header{position:sticky;top:0;z-index:60;background:rgba(4,8,22,.78);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.nav{display:flex;align-items:center;justify-content:space-between;min-height:70px;gap:16px}
+.logo{display:flex;align-items:center;gap:10px;font:italic 1.5rem var(--serif);text-decoration:none}
+.logo-mark{width:30px;height:30px;border-radius:50%;border:1px solid var(--ink);position:relative}
+.logo-mark::after{content:"";position:absolute;inset:7px;border-radius:50%;background:radial-gradient(#fff,var(--blue))}
+.nav-list{display:flex;gap:4px;list-style:none;align-items:center}
+.nav-list a{display:block;padding:10px 16px;border-radius:999px;text-decoration:none;font-size:.92rem;color:var(--muted);transition:background .2s,color .2s}
+.nav-list a:hover,.nav-list a.active{background:var(--glass);color:var(--ink)}
+.nav-list a.btn{color:var(--bg)}
+.menu-toggle{display:none;width:48px;height:48px;border:1px solid var(--line);border-radius:14px;background:var(--glass);cursor:pointer;color:var(--ink);font-size:1.4rem}
+
+/* hero со световой полосой */
+.hero{padding:60px 0 72px;overflow:hidden;position:relative}
+.hero::before{content:"";position:absolute;right:-8%;top:14%;width:400px;height:320px;pointer-events:none;background:radial-gradient(50% 50% at 50% 50%,rgba(106,168,255,.14),transparent 70%);filter:blur(50px)}
+.hero-grid{position:relative;display:grid;grid-template-columns:1.15fr .85fr;gap:48px;align-items:center}
+.hero .tag::before{display:none}
+.hero h1{font-size:clamp(2.9rem,6.6vw,5.4rem);margin-bottom:6px}
+.hero h1 .accent{color:var(--blue)}
+.hero .lead{font-family:var(--sans);font-size:1.15rem;line-height:1.75;color:#dbe2f4;margin:20px 0 28px;max-width:46ch}
+.hero-points{list-style:none;display:flex;flex-wrap:wrap;gap:8px 22px;margin:0 0 30px;padding:0}
+.hero-points li{display:inline-flex;align-items:center;gap:9px;font:.92rem var(--mono);color:var(--muted)}
+.hero-points li::before{content:"";width:7px;height:7px;background:var(--blue);transform:rotate(45deg);flex-shrink:0}
+.hero-actions{display:flex;flex-wrap:wrap;gap:14px;align-items:center}
+.hero .btn-primary{min-height:58px;padding:14px 34px;font-size:1.05rem;border-color:var(--blue)}
+.hero .btn-primary:hover{box-shadow:0 0 32px 4px rgba(106,168,255,.45)}
+.hero .btn-quiet{min-height:58px}
+.hero-note{margin-top:20px;font:.88rem var(--mono);color:var(--muted)}
+
+/* таймер */
+.timer-card{width:100%;max-width:360px;justify-self:end;display:grid;gap:14px;justify-items:center;text-align:center;padding:22px;border-radius:24px;border:1px solid var(--line);background:rgba(10,18,48,.88)}
+.timer-ring{--p:0;position:relative;width:148px;aspect-ratio:1;border-radius:50%;background:conic-gradient(var(--blue) calc(var(--p)*1%),rgba(255,255,255,.1) 0);display:grid;place-items:center}
+.timer-ring::before{content:"";position:absolute;inset:10px;border-radius:50%;background:var(--bg2)}
+.timer-time{position:relative;font:italic 1.9rem var(--serif);font-variant-numeric:tabular-nums}
+.timer-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.timer-title{font:italic 1.25rem var(--serif)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px}
+.seg button{min-height:40px;padding:6px 16px;border:0;border-radius:999px;background:transparent;color:var(--muted);font:600 .88rem var(--sans);cursor:pointer;transition:background .2s,color .2s}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.timer-label{font-family:var(--mono);font-size:.9rem;color:var(--muted);margin-bottom:18px;min-height:1.6em;line-height:1.6}
+.timer-controls{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.timer-top{width:100%}
+.timer-label{margin-bottom:0}
+.custom-details{width:100%;text-align:left;background:none;border:0;padding:0}
+.custom-details summary{min-height:44px;justify-content:center;gap:8px;font-size:.9rem;color:var(--muted)}
+.custom-details[open]{border:0}
+.custom-time{margin-top:6px}
+.custom-time{border-top:1px solid var(--line);padding-top:18px}
+.custom-time legend{font-family:var(--mono);font-size:.85rem;color:var(--muted);margin-bottom:10px;padding:0}
+.custom-row{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.field{display:grid;gap:4px;font-size:.82rem;color:var(--muted)}
+.field input{width:92px}
+.presets{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.time-error{min-height:1.4em;margin-top:8px;font-size:.88rem;color:var(--danger)}
+
+/* поля */
+input[type=text],input[type=number],select{min-height:48px;padding:10px 14px;border:1px solid var(--line);border-radius:12px;font:inherit;color:var(--ink);background:rgba(255,255,255,.06);width:100%}
+input:focus,select:focus{border-color:var(--blue);outline:none;box-shadow:0 0 0 3px var(--blue-soft)}
+select option{background:var(--bg2);color:var(--ink)}
+.chip{min-height:44px;padding:6px 18px;border-radius:999px;border:1px solid var(--line);background:transparent;font:600 .88rem var(--sans);color:var(--muted);cursor:pointer;transition:all .2s}
+.chip:hover{border-color:var(--blue);color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+
+/* возможности: редакционные колонки с линиями */
+.features{display:grid;grid-template-columns:repeat(4,1fr);gap:28px}
+.feature{padding-top:24px;border-top:1px solid var(--line);transition:border-color .3s}
+.feature:hover{border-top-color:var(--blue)}
+.feature p{color:#bcc6e2;font-size:1rem;line-height:1.7}
+.feature h3{margin-bottom:8px}
+.feature-icon{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);display:grid;place-items:center;margin-bottom:16px;color:var(--blue)}
+.feature-icon svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* стеклянные панели */
+.panel{background:var(--glass);border:1px solid var(--line);border-radius:24px;padding:30px;backdrop-filter:blur(8px)}
+.demo-wrap{display:grid;grid-template-columns:1.25fr .75fr;gap:24px;align-items:start}
+.task-form{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px}
+.task-form input[type=text]{flex:1 1 200px;width:auto}
+.task-form select{flex:0 1 160px;width:auto}
+.filters{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.task-list{list-style:none;display:grid;gap:10px}
+.task{display:flex;align-items:center;gap:12px;padding:8px 8px 8px 16px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.03);transition:border-color .2s,opacity .2s}
+.task:hover{border-color:rgba(106,168,255,.55)}
+.task label{display:flex;align-items:center;gap:14px;flex:1;cursor:pointer;min-width:0;min-height:44px}
+.task input{width:22px;height:22px;accent-color:var(--blue);flex-shrink:0;cursor:pointer}
+.task-title{overflow-wrap:anywhere}
+.task.done{opacity:.6}
+.task.done .task-title{text-decoration:line-through}
+.badge{font:.85rem var(--mono);padding:4px 12px;border-radius:999px;white-space:nowrap;border:1px solid var(--line);color:var(--muted)}
+.badge.soon{color:var(--warn);border-color:rgba(255,207,138,.5)}
+.badge.prio-high{color:#ffb4b4;border-color:rgba(255,180,180,.5)}
+.badge.prio-low{color:var(--muted)}
+.badge.ok{color:var(--ok);border-color:rgba(143,227,192,.5)}
+.task-del{width:44px;height:44px;border:0;background:transparent;border-radius:50%;font-size:1.3rem;color:var(--muted);cursor:pointer;transition:background .2s,color .2s;flex-shrink:0}
+.task-del:hover{background:rgba(255,154,154,.15);color:var(--danger)}
+.empty{padding:28px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:16px;font-family:var(--mono);font-size:.9rem}
+.progress-ring{--p:0;width:170px;aspect-ratio:1;margin:0 auto 22px;border-radius:50%;background:conic-gradient(var(--blue) calc(var(--p)*1%),rgba(255,255,255,.1) 0);display:grid;place-items:center;position:relative;transition:background .4s}
+.progress-ring::before{content:"";position:absolute;inset:12px;border-radius:50%;background:var(--bg2)}
+.progress-ring.complete{background:conic-gradient(var(--ok) 100%,transparent 0)}
+.progress-ring strong{position:relative;font:italic 2.4rem var(--serif);font-weight:400}
+.stat-row{display:flex;justify-content:space-between;padding:12px 0;border-top:1px solid var(--line);font-size:.95rem}
+.stat-row span:first-child{color:var(--muted)}
+.bar{height:6px;border-radius:999px;background:rgba(255,255,255,.1);overflow:hidden;margin-top:8px}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--blue),#eaf5ff);border-radius:inherit;transition:width .5s}
+
+/* тарифы */
+.pricing{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;align-items:stretch}
+.plan{background:var(--glass);border:1px solid var(--line);border-radius:24px;padding:36px 30px;display:flex;flex-direction:column;transition:transform .25s,border-color .25s,box-shadow .25s}
+.plan:hover{transform:translateY(-4px)}
+.plan.featured{background:linear-gradient(180deg,rgba(106,168,255,.10),rgba(255,255,255,.04) 60%);border-color:rgba(106,168,255,.35)}
+.plan.selected{border-color:var(--ink);box-shadow:0 0 0 3px rgba(239,232,218,.25),0 0 40px -6px rgba(106,168,255,.55)}
+.plan-desc{color:#bcc6e2;font-size:.98rem;line-height:1.6;margin-bottom:24px}
+.price{font:italic 3.2rem var(--serif);line-height:1}
+.price small{font:.9rem var(--mono);color:var(--muted)}
+.plan ul{list-style:none;margin:26px 0 32px;display:grid;gap:10px;flex:1}
+.plan li{padding-left:26px;position:relative;color:#bcc6e2;font-size:.98rem;line-height:1.6}
+.plan li::before{content:"";position:absolute;left:3px;top:.5em;width:6px;height:6px;background:var(--blue);transform:rotate(45deg)}
+
+/* FAQ */
+.faq{display:grid;gap:12px}
+details{background:var(--glass);border:1px solid var(--line);border-radius:18px;padding:2px 24px;transition:border-color .2s}
+details[open]{border-color:rgba(106,168,255,.5)}
+summary{min-height:58px;display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;font-weight:600;list-style:none}
+summary::-webkit-details-marker{display:none}
+summary::after{content:"+";font-size:1.5rem;color:var(--blue);transition:transform .25s}
+details[open] summary::after{transform:rotate(45deg)}
+details p{color:#bcc6e2;line-height:1.7;padding-bottom:22px}
+
+/* изображения в стиле сайта (дуотон под палитру) */
+.media-band,.faq-media,.cta-media{margin:0}
+.media-band{margin-top:48px;position:relative;border:1px solid var(--line);border-radius:24px;overflow:hidden;background:var(--bg2)}
+.media-band img{display:block;width:100%;height:clamp(240px,36vw,400px);object-fit:cover;filter:grayscale(.25) contrast(1.08) brightness(.92);transition:transform .6s,filter .4s}
+.media-band:hover img{transform:scale(1.03);filter:grayscale(.05) contrast(1.08) brightness(1)}
+.media-band::after{content:"";position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(4,8,22,0) 30%,rgba(4,8,22,.72)),linear-gradient(90deg,rgba(10,18,48,.4),transparent 55%)}
+.media-band figcaption{position:absolute;left:26px;right:26px;bottom:20px;z-index:1;display:flex;align-items:center;gap:12px;font:.9rem var(--mono);color:var(--ink)}
+.media-band figcaption::before{content:"";width:30px;height:1px;background:var(--blue);flex-shrink:0}
+
+.faq-grid{display:grid;grid-template-columns:.8fr 1.2fr;gap:36px;align-items:start}
+.faq-media{position:sticky;top:96px;border:1px solid var(--line);border-radius:24px;overflow:hidden;background:var(--bg2)}
+.faq-media img{display:block;width:100%;height:100%;min-height:340px;max-height:480px;object-fit:cover;filter:grayscale(.25) contrast(1.08) brightness(.95)}
+
+.cta-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:48px;align-items:center}
+.cta-copy{padding:28px 0}
+.cta-copy p{margin-bottom:28px}
+.cta-media{border:1px solid var(--line);border-radius:20px;overflow:hidden;transform:rotate(2.5deg);box-shadow:0 34px 70px -32px #000;transition:transform .4s}
+.cta-media:hover{transform:rotate(0)}
+.cta-media img{display:block;width:100%;aspect-ratio:1;object-fit:cover;filter:grayscale(.25) contrast(1.05) brightness(.9)}
+
+/* CTA */
+.cta{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:28px;padding:80px 32px;text-align:center;background:var(--bg2)}
+.cta::before{content:"";position:absolute;left:-10%;right:-10%;bottom:-120px;height:240px;background:radial-gradient(50% 50% at 50% 50%,#bcdcff,#3d7bff 45%,transparent 75%);filter:blur(40px);opacity:.35}
+.cta>*{position:relative}
+.cta p{font-family:var(--mono);font-size:1rem;color:#c3cde8;line-height:1.7;margin:0 auto 32px;max-width:48ch}
+.site-footer{padding:40px 0 56px;color:var(--muted);font-size:.92rem}
+.footer-inner{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:center;border-top:1px solid var(--line);padding-top:28px}
+.footer-inner nav{display:flex;gap:20px;flex-wrap:wrap}
+.footer-inner a{text-decoration:none;padding:10px 0;display:inline-block}
+.footer-inner a:hover{color:var(--ink)}
+
+/* диалог и уведомление */
+dialog{border:1px solid var(--line);border-radius:24px;padding:34px;width:min(460px,100% - 32px);margin:auto;background:var(--bg2);color:var(--ink);box-shadow:0 40px 90px -30px #000}
+dialog::backdrop{background:rgba(2,4,12,.75);backdrop-filter:blur(4px)}
+dialog[open]{animation:pop .25s ease}
+@keyframes pop{from{opacity:0;transform:scale(.95)}}
+dialog p{color:#bcc6e2;margin:10px 0 22px;font-size:.98rem;line-height:1.65}
+dialog label{display:block;font-size:.9rem;margin-bottom:6px}
+.dialog-actions{display:flex;gap:10px;margin-top:22px;flex-wrap:wrap}
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,120px);background:var(--ink);color:var(--bg);padding:13px 24px;border-radius:999px;font-weight:600;z-index:300;transition:transform .3s;max-width:calc(100% - 32px);text-align:center}
+.toast.show{transform:translate(-50%,0)}
+.sr{position:absolute;left:-9999px}
+
+/* адаптив */
+@media (max-width:960px){
+  section{padding:72px 0}
+  .section-head{margin-bottom:44px}
+  .features{grid-template-columns:repeat(2,1fr)}
+  .demo-wrap{grid-template-columns:1fr}
+  .pricing{grid-template-columns:1fr;max-width:520px;margin-inline:auto}
+  .hero-grid{grid-template-columns:1fr;gap:40px}
+  .timer-card{justify-self:center}
+  .faq-grid{grid-template-columns:1fr}
+  .faq-media{position:static}
+  .faq-media img{min-height:0;height:280px}
+  .cta-grid{grid-template-columns:1fr;text-align:center}
+  .cta-copy{padding:0}
+  .cta-media{max-width:360px;margin:0 auto;transform:rotate(0)}
+  .menu-toggle{display:block}
+  .nav-list{position:absolute;top:70px;left:0;right:0;flex-direction:column;align-items:stretch;background:var(--bg);padding:12px 20px 20px;border-bottom:1px solid var(--line);display:none}
+  .nav-list.open{display:flex}
+  .nav-list a{padding:14px 16px}
+}
+@media (max-width:600px){
+  body{font-size:16px}
+  .features{grid-template-columns:1fr}
+  .panel{padding:22px}
+  .hero{padding:40px 0 56px}
+  .hero h1{font-size:clamp(2.4rem,10.5vw,3rem)}
+  .hero .lead{font-size:1.05rem;margin:16px 0 20px}
+  .hero-points{gap:6px 16px;margin-bottom:24px}
+  .hero-actions{gap:10px}
+  .hero-actions .btn{width:100%}
+  .hero .btn-primary{min-height:54px;padding:12px 24px;font-size:1rem}
+  .timer-ring{width:124px}
+  .timer-ring::before{inset:8px}
+  .timer-time{font-size:1.6rem}
+  .timer-card{padding:18px;justify-self:stretch;max-width:none}
+  .timer-top{justify-content:center}
+  .cta{padding:56px 20px}
+  .tag::before,.tag::after{width:28px}
+  .media-band{margin-top:36px}
+  .media-band figcaption{left:18px;right:18px;bottom:14px}
+  .cta-media{max-width:300px}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
+}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="container nav">
+    <a href="#top" class="logo" aria-label="StudyFlow — на главную"><span class="logo-mark"></span>StudyFlow</a>
+    <button class="menu-toggle" id="menuToggle" aria-expanded="false" aria-controls="navList" aria-label="Открыть меню">☰</button>
+    <ul class="nav-list" id="navList">
+      <li><a href="#demo">Демо</a></li>
+      <li><a href="#features">Возможности</a></li>
+      <li><a href="#pricing">Тарифы</a></li>
+      <li><a href="#faq">Вопросы</a></li>
+      <li><a href="#demo" class="btn btn-primary btn-small">Открыть демо</a></li>
+    </ul>
+  </div>
+</header>
+
+<main id="top">
+  <section class="hero" aria-labelledby="hero-title">
+    <div class="container hero-grid">
+      <div class="hero-copy">
+        <div class="tag"><span>Планировщик для студентов</span></div>
+        <h1 id="hero-title">Учёба в&nbsp;своём <span class="accent">ритме</span></h1>
+        <p class="lead">StudyFlow — онлайн-планировщик для студентов: записывайте задачи и дедлайны, отслеживайте прогресс и работайте по таймеру фокуса. Меньше хаоса — больше сделанного.</p>
+        <ul class="hero-points" aria-label="Что умеет StudyFlow">
+          <li>Задачи и приоритеты</li>
+          <li>Контроль дедлайнов</li>
+          <li>Таймер фокуса</li>
+        </ul>
+        <div class="hero-actions">
+          <a href="#demo" class="btn btn-primary">Попробовать планировщик</a>
+          <a href="#features" class="btn btn-quiet">Посмотреть возможности</a>
+        </div>
+        <p class="hero-note">Без регистрации. Это демо: данные остаются только в вашем браузере.</p>
+      </div>
+
+      <div class="timer-card" role="group" aria-label="Таймер фокуса">
+        <div class="timer-top">
+          <span class="timer-title">Таймер фокуса</span>
+          <div class="seg" role="group" aria-label="Режим таймера">
+            <button type="button" data-mode="focus" aria-pressed="true">Работа</button>
+            <button type="button" data-mode="short" aria-pressed="false">Перерыв</button>
+          </div>
+        </div>
+        <div class="timer-ring" id="timerRing"><div class="timer-time" id="timerTime" role="timer" aria-live="off">25:00</div></div>
+        <p class="timer-label" id="timerLabel" aria-live="polite">Нажмите «Старт» или задайте своё время</p>
+        <div class="timer-controls">
+          <button class="btn btn-primary" id="timerStart" type="button">Старт</button>
+          <button class="btn btn-ghost" id="timerReset" type="button">Сбросить</button>
+        </div>
+        <details class="custom-details">
+          <summary>Задать своё время</summary>
+          <form class="custom-time" id="customForm" novalidate>
+            <fieldset style="border:0">
+              <legend>Время для режима «<span id="modeName">Работа</span>»</legend>
+              <div class="custom-row">
+                <div class="field"><label for="customMin">Минуты</label><input type="number" id="customMin" min="0" max="180" value="25" inputmode="numeric"></div>
+                <div class="field"><label for="customSec">Секунды</label><input type="number" id="customSec" min="0" max="59" value="0" inputmode="numeric"></div>
+                <button class="btn btn-ghost" type="submit">Задать</button>
+              </div>
+              <div class="presets" role="group" aria-label="Быстрый выбор">
+                <button type="button" class="chip" data-preset="15">15 мин</button>
+                <button type="button" class="chip" data-preset="25">25 мин</button>
+                <button type="button" class="chip" data-preset="45">45 мин</button>
+                <button type="button" class="chip" data-preset="60">60 мин</button>
+              </div>
+              <p class="time-error" id="timeError" role="alert"></p>
+            </fieldset>
+          </form>
+        </details>
+      </div>
+    </div>
+  </section>
+
+  <section id="demo" aria-labelledby="demo-title">
+    <div class="container">
+      <div class="section-head">
+        <div class="tag"><span>Демо</span></div>
+        <h2 id="demo-title">Спланируйте день за минуту</h2>
+        <p class="lead">Это рабочая демонстрация: добавляйте задачи, меняйте приоритет и срок. Данные хранятся только в этом браузере, аккаунта и синхронизации нет.</p>
+      </div>
+      <div class="demo-wrap">
+        <div class="panel">
+          <form class="task-form" id="taskForm">
+            <label for="taskTitle" class="sr">Название задачи</label>
+            <input type="text" id="taskTitle" placeholder="Например, конспект по физике" maxlength="60" required>
+            <label for="taskDays" class="sr">Срок</label>
+            <select id="taskDays">
+              <option value="0">Сегодня</option>
+              <option value="1">Завтра</option>
+              <option value="3" selected>Через 3 дня</option>
+              <option value="7">Через неделю</option>
+            </select>
+            <label for="taskPrio" class="sr">Приоритет</label>
+            <select id="taskPrio"><option value="high">Высокий</option><option value="mid" selected>Средний</option><option value="low">Низкий</option></select>
+            <button class="btn btn-primary" type="submit">Добавить</button>
+          </form>
+          <div class="filters" role="group" aria-label="Фильтр задач">
+            <button class="chip" type="button" data-filter="all" aria-pressed="true">Все</button>
+            <button class="chip" type="button" data-filter="active" aria-pressed="false">Активные</button>
+            <button class="chip" type="button" data-filter="done" aria-pressed="false">Выполненные</button>
+          </div>
+          <ul class="task-list" id="taskList"></ul>
+        </div>
+
+        <aside class="panel" aria-label="Прогресс">
+          <div class="progress-ring" id="progressRing"><strong id="progressText">0%</strong></div>
+          <div class="stat-row"><span>Всего задач</span><strong id="statTotal">0</strong></div>
+          <div class="stat-row"><span>Выполнено</span><strong id="statDone">0</strong></div>
+          <div class="stat-row"><span>Срочных (до 2 дней)</span><strong id="statSoon">0</strong></div>
+          <div class="stat-row" style="display:block"><span>Минуты фокуса</span>
+            <div class="bar" aria-hidden="true"><i id="focusBar"></i></div>
+            <p id="focusText" style="color:var(--muted);font-size:.9rem;margin-top:6px">0 из 100 минут</p>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </section>
+
+  <section id="features" aria-labelledby="features-title">
+    <div class="container">
+      <div class="section-head">
+        <div class="tag"><span>Возможности</span></div>
+        <h2 id="features-title">Четыре проблемы учёбы — четыре решения</h2>
+        <p class="lead">Каждый инструмент отвечает на конкретную ситуацию: забыл задание, не вижу срок, не понимаю прогресс, не могу сосредоточиться.</p>
+      </div>
+      <div class="features">
+        <article class="feature"><div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6l1 1 2-2M4 12l1 1 2-2M4 18l1 1 2-2"/></svg></div><h3>Не забудете задания</h3><p>Записывайте, например, «Подготовиться к экзамену по физике» с приоритетом и сроком.</p></article>
+        <article class="feature"><div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="15" rx="2"/><path d="M8 3v4M16 3v4M4 10h16"/></svg></div><h3>Увидите срочное заранее</h3><p>Задачи со сроком в ближайшие 2 дня подсвечиваются и считаются отдельно.</p></article>
+        <article class="feature"><div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M5 20V10M12 20V4M19 20v-7"/></svg></div><h3>Поймёте, сколько сделано</h3><p>Кольцо показывает долю выполненных задач, шкала — минуты фокуса за сессию.</p></article>
+        <article class="feature"><div class="feature-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2M9 3h6"/></svg></div><h3>Сосредоточитесь на деле</h3><p>Интервалы 25/5 минут или своё время до 180 минут.</p></article>
+      </div>
+      <figure class="media-band">
+        <img src="study_.jpg" alt="Учебный день студента: план занятий, конспекты и таймер фокуса" width="736" height="552" loading="lazy">
+        <figcaption>Один экран вместо заметок в шести приложениях: задачи, дедлайны и фокус рядом</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section id="pricing" aria-labelledby="pricing-title">
+    <div class="container">
+      <div class="section-head center">
+        <div class="tag"><span>Тарифы</span></div>
+        <h2 id="pricing-title">Бесплатно для старта, платно для большего</h2>
+        <p class="lead">Тарифы демонстрационные: реальная оплата не подключена.</p>
+      </div>
+      <div class="pricing">
+        <article class="plan" data-plan="Базовый">
+          <h3>Базовый</h3><p class="plan-desc">Для первых шагов.</p>
+          <p class="price">0 ₽<small> / мес</small></p>
+          <ul><li>До 20 активных задач</li><li>Таймер фокуса</li><li>Список дедлайнов</li></ul>
+          <a class="btn btn-ghost" href="#demo">Начать бесплатно</a>
+        </article>
+        <article class="plan featured" data-plan="Студент">
+          <h3>Студент</h3><p class="plan-desc">Для регулярного планирования.</p>
+          <p class="price">199 ₽<small> / мес</small></p>
+          <ul><li>Безлимитные задачи</li><li>Статистика по неделям</li><li>Напоминания о дедлайнах</li><li>Свои режимы таймера</li></ul>
+          <button class="btn btn-primary" type="button" data-choose>Выбрать Студент</button>
+        </article>
+        <article class="plan" data-plan="Группа">
+          <h3>Группа</h3><p class="plan-desc">Для проектов и сессий.</p>
+          <p class="price">499 ₽<small> / мес</small></p>
+          <ul><li>До 6 участников</li><li>Общие дедлайны</li><li>Прогресс всей группы</li></ul>
+          <button class="btn btn-ghost" type="button" data-choose>Выбрать Группу</button>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq" aria-labelledby="faq-title">
+    <div class="container">
+      <div class="section-head">
+        <div class="tag"><span>Вопросы</span></div>
+        <h2 id="faq-title">Частые вопросы</h2>
+      </div>
+      <div class="faq-grid">
+        <figure class="faq-media">
+          <img src="focus-time.jpg" alt="Студент за рабочим столом планирует задачи в планере" width="736" height="814" loading="lazy">
+        </figure>
+        <div class="faq">
+          <details><summary>Это готовое приложение?</summary><p>Нет, это демонстрация лендинга: аккаунтов, синхронизации и оплаты нет, а данные хранятся только в вашем браузере.</p></details>
+          <details><summary>Нужна ли регистрация?</summary><p>Нет. Всё работает локально в вашем браузере, данные никуда не отправляются.</p></details>
+          <details><summary>Как задать своё время на таймере?</summary><p>Выберите режим «Работа» или «Перерыв», введите минуты и секунды (до 180 минут) и нажмите «Задать время». Можно также выбрать готовый интервал.</p></details>
+          <details><summary>Что будет, если закрыть вкладку?</summary><p>Список задач сохранится в браузере, а таймер сбросится.</p></details>
+          <details><summary>Работает ли сайт на телефоне?</summary><p>Да. Страница подстраивается под экран компьютера, планшета и смартфона.</p></details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="cta-title" style="padding-top:0">
+    <div class="container">
+      <div class="cta">
+        <div class="cta-grid">
+          <div class="cta-copy">
+            <h2 id="cta-title">Начните семестр спокойно</h2>
+            <p>Выберите тариф и соберите свой учебный план в StudyFlow.</p>
+            <a href="#demo" class="btn btn-primary">Попробовать планировщик</a>
+          </div>
+          <figure class="cta-media">
+            <img src="study-space.jpg" alt="Уютное учебное место с ноутбуком и планером" width="736" height="736" loading="lazy">
+          </figure>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="container footer-inner">
+    <p>© 2026 StudyFlow. Учебный демонстрационный проект.</p>
+    <nav aria-label="Нижнее меню">
+      <a href="#demo">Демо</a><a href="#features">Возможности</a><a href="#pricing">Тарифы</a><a href="#faq">Вопросы</a><a href="#top">Наверх</a>
+    </nav>
+  </div>
+</footer>
+
+<dialog id="planDialog" aria-labelledby="dlgTitle">
+  <form method="dialog">
+    <h3 id="dlgTitle">Тариф</h3>
+    <p>Демонстрационное оформление. Оплата не подключена, данные никуда не отправляются.</p>
+    <label for="dlgName">Ваше имя</label>
+    <input type="text" id="dlgName" placeholder="Например, Анна" maxlength="40">
+    <div class="dialog-actions">
+      <button class="btn btn-primary" type="submit" value="ok">Подтвердить</button>
+      <button class="btn btn-ghost" type="submit" value="cancel" formnovalidate>Отмена</button>
+    </div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  'use strict';
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
+
+  /* ---------- Уведомление ---------- */
+  const toast = $('#toast');
+  let toastTimer;
+  function showToast(msg) {
+    toast.textContent = msg;
+    toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toast.classList.remove('show'), 2800);
+  }
+
+  /* ---------- Меню ---------- */
+  const menuBtn = $('#menuToggle'), navList = $('#navList');
+  function closeMenu() { navList.classList.remove('open'); menuBtn.setAttribute('aria-expanded', 'false'); }
+  menuBtn.addEventListener('click', () => {
+    menuBtn.setAttribute('aria-expanded', String(navList.classList.toggle('open')));
+  });
+  $$('a[href^="#"]').forEach(a => a.addEventListener('click', closeMenu));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && navList.classList.contains('open')) { closeMenu(); menuBtn.focus(); } });
+
+  const links = $$('.nav-list a[href^="#"]:not(.btn)');
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) links.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#' + e.target.id));
+      });
+    }, { rootMargin: '-45% 0px -50% 0px' });
+    links.forEach(l => { const s = $(l.getAttribute('href')); if (s) io.observe(s); });
+  }
+
+  /* ---------- Таймер ---------- */
+  const timeEl = $('#timerTime'), ringEl = $('#timerRing'), labelEl = $('#timerLabel');
+  const startBtn = $('#timerStart'), resetBtn = $('#timerReset');
+  const minIn = $('#customMin'), secIn = $('#customSec'), errEl = $('#timeError');
+  const modeBtns = $$('.seg button');
+  const modeNames = { focus: 'Работа', short: 'Перерыв' };
+  const durations = { focus: 25 * 60, short: 5 * 60 };
+  let mode = 'focus', total = durations.focus, left = total, tick = null, endAt = 0, focusSeconds = 0;
+
+  const fmt = s => {
+    const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), sec = s % 60;
+    return (h ? h + ':' + String(m).padStart(2, '0') : String(m).padStart(2, '0')) + ':' + String(sec).padStart(2, '0');
+  };
+  function renderTimer() {
+    timeEl.textContent = fmt(left);
+    ringEl.style.setProperty('--p', ((total - left) / total * 100).toFixed(1));
+    document.title = tick ? fmt(left) + ' — StudyFlow' : 'StudyFlow — учёба без хаоса';
+  }
+  function renderFocus() {
+    const min = Math.floor(focusSeconds / 60);
+    $('#focusBar').style.width = Math.min(100, min) + '%';
+    $('#focusText').textContent = min + ' из 100 минут';
+  }
+  function syncInputs() { minIn.value = Math.floor(total / 60); secIn.value = total % 60; }
+  function stopTimer() {
+    clearInterval(tick); tick = null;
+    startBtn.textContent = left === total ? 'Старт' : 'Продолжить';
+  }
+  function beep() {
+    try {
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination); o.frequency.value = 660; g.gain.value = 0.08;
+      o.start(); o.stop(ctx.currentTime + 0.4);
+    } catch (e) { /* звук недоступен */ }
+  }
+  function onTick() {
+    const nl = Math.max(0, Math.ceil((endAt - Date.now()) / 1000));
+    if (mode === 'focus' && nl < left) { focusSeconds += left - nl; renderFocus(); }
+    left = nl;
+    if (left === 0) {
+      stopTimer(); left = total; startBtn.textContent = 'Старт'; renderTimer();
+      labelEl.textContent = mode === 'focus' ? 'Сессия завершена. Сделайте перерыв.' : 'Перерыв закончился. Пора возвращаться.';
+      showToast('Время вышло'); beep(); return;
+    }
+    renderTimer();
+  }
+  startBtn.addEventListener('click', () => {
+    if (tick) { stopTimer(); labelEl.textContent = 'Пауза'; renderTimer(); return; }
+    endAt = Date.now() + left * 1000;
+    tick = setInterval(onTick, 500);
+    startBtn.textContent = 'Пауза';
+    labelEl.textContent = mode === 'focus' ? 'Фокус. Отложите телефон.' : 'Отдыхайте, вы это заслужили.';
+    renderTimer();
+  });
+  let resetArmed = null;
+  function disarmReset() { clearTimeout(resetArmed); resetArmed = null; resetBtn.textContent = 'Сбросить'; }
+  resetBtn.addEventListener('click', () => {
+    if ((tick || left !== total) && !resetArmed) {
+      resetBtn.textContent = 'Точно сбросить?';
+      resetArmed = setTimeout(disarmReset, 3000); return;
+    }
+    disarmReset(); stopTimer(); left = total; startBtn.textContent = 'Старт';
+    labelEl.textContent = 'Таймер сброшен'; renderTimer();
+  });
+  document.addEventListener('visibilitychange', () => { if (tick && !document.hidden) onTick(); });
+  modeBtns.forEach(b => b.addEventListener('click', () => {
+    stopTimer(); mode = b.dataset.mode; total = left = durations[mode];
+    modeBtns.forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+    $('#modeName').textContent = modeNames[mode];
+    startBtn.textContent = 'Старт'; labelEl.textContent = 'Нажмите «Старт» или задайте своё время';
+    errEl.textContent = ''; syncInputs(); renderTimer();
+  }));
+
+  function applyTime(m, s) {
+    if (!Number.isInteger(m) || !Number.isInteger(s) || m < 0 || s < 0 || s > 59) {
+      errEl.textContent = 'Введите целые числа: минуты от 0 до 180, секунды от 0 до 59.'; return;
+    }
+    const sec = m * 60 + s;
+    if (sec < 1) { errEl.textContent = 'Время должно быть больше нуля.'; return; }
+    if (sec > 180 * 60) { errEl.textContent = 'Максимум — 180 минут.'; return; }
+    errEl.textContent = '';
+    stopTimer(); durations[mode] = total = left = sec;
+    startBtn.textContent = 'Старт'; labelEl.textContent = 'Время задано. Нажмите «Старт».';
+    syncInputs(); renderTimer(); showToast('Таймер: ' + fmt(sec));
+  }
+  $('#customForm').addEventListener('submit', e => {
+    e.preventDefault();
+    applyTime(Number(minIn.value === '' ? 0 : minIn.value), Number(secIn.value === '' ? 0 : secIn.value));
+  });
+  $$('[data-preset]').forEach(b => b.addEventListener('click', () => applyTime(Number(b.dataset.preset), 0)));
+  syncInputs(); renderTimer(); renderFocus();
+
+  /* ---------- Задачи (сохраняются в localStorage) ---------- */
+  const KEY = 'studyflow.tasks.v2';
+  const listEl = $('#taskList'), form = $('#taskForm'), titleIn = $('#taskTitle'), daysSel = $('#taskDays');
+  let filter = 'all';
+  const seed = [
+    { title: 'Подготовиться к экзамену по физике', days: 1, prio: 'high', done: false },
+    { title: 'Сдать лабораторную по информатике', days: 0, prio: 'high', done: false },
+    { title: 'Прочитать главу 4 учебника по истории', days: 4, prio: 'mid', done: false },
+    { title: 'Сделать домашнее задание по английскому', days: 2, prio: 'low', done: false },
+    { title: 'Оформить конспект лекции по матанализу', days: 6, prio: 'low', done: true }
+  ];
+  function load() {
+    try { const d = JSON.parse(localStorage.getItem(KEY)); if (Array.isArray(d)) return d; } catch (e) { /* нет доступа */ }
+    return seed.slice();
+  }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(tasks)); } catch (e) { /* нет доступа */ } }
+  const tasks = load().map(t => Object.assign({ prio: 'mid' }, t));
+  const prioNames = { high: 'Высокий', mid: 'Средний', low: 'Низкий' };
+  const dueText = d => d === 0 ? 'Сегодня' : d === 1 ? 'Завтра' : 'Через ' + d + ' дн.';
+
+  function renderTasks() {
+    const shown = tasks.filter(t => filter === 'all' || (filter === 'done' ? t.done : !t.done));
+    listEl.innerHTML = '';
+    if (!shown.length) {
+      const li = document.createElement('li');
+      li.className = 'empty';
+      li.textContent = filter === 'done' ? 'Выполненных задач пока нет. Отметьте первую.' : 'Задач нет. Добавьте новую выше.';
+      listEl.appendChild(li);
+    }
+    shown.forEach(t => {
+      const li = document.createElement('li');
+      li.className = 'task' + (t.done ? ' done' : '');
+      const label = document.createElement('label');
+      const cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.checked = t.done;
+      cb.addEventListener('change', () => { t.done = cb.checked; renderTasks(); if (t.done) showToast('Задача выполнена'); });
+      const name = document.createElement('span');
+      name.className = 'task-title'; name.textContent = t.title;
+      label.append(cb, name);
+      const badge = document.createElement('span');
+      badge.className = 'badge' + (t.done ? ' ok' : t.days <= 2 ? ' soon' : '');
+      badge.textContent = t.done ? 'Готово' : dueText(t.days);
+      const prio = document.createElement('span');
+      prio.className = 'badge prio-' + t.prio; prio.textContent = prioNames[t.prio] || 'Средний';
+      prio.setAttribute('aria-label', 'Приоритет: ' + prio.textContent.toLowerCase());
+      const del = document.createElement('button');
+      del.type = 'button'; del.className = 'task-del'; del.textContent = '×';
+      del.setAttribute('aria-label', 'Удалить задачу «' + t.title + '»');
+      del.addEventListener('click', () => { tasks.splice(tasks.indexOf(t), 1); renderTasks(); showToast('Задача удалена'); });
+      li.append(label, prio, badge, del);
+      listEl.appendChild(li);
+    });
+    const n = tasks.length, done = tasks.filter(t => t.done).length, pct = n ? Math.round(done / n * 100) : 0;
+    $('#progressRing').style.setProperty('--p', pct);
+    $('#progressRing').classList.toggle('complete', n > 0 && pct === 100);
+    $('#progressText').textContent = pct + '%';
+    $('#statTotal').textContent = n;
+    $('#statDone').textContent = done;
+    $('#statSoon').textContent = tasks.filter(t => !t.done && t.days <= 2).length;
+    save();
+  }
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    const title = titleIn.value.trim();
+    if (!title) { titleIn.focus(); return; }
+    tasks.unshift({ title, days: Number(daysSel.value), prio: $('#taskPrio').value, done: false });
+    titleIn.value = ''; filter = 'all';
+    $$('[data-filter]').forEach(c => c.setAttribute('aria-pressed', String(c.dataset.filter === 'all')));
+    renderTasks(); showToast('Задача добавлена');
+  });
+  $$('[data-filter]').forEach(c => c.addEventListener('click', () => {
+    filter = c.dataset.filter;
+    $$('[data-filter]').forEach(x => x.setAttribute('aria-pressed', String(x === c)));
+    renderTasks();
+  }));
+  renderTasks();
+
+  /* ---------- Тарифы ---------- */
+  const dlg = $('#planDialog'), plans = $$('.plan');
+  let chosen = null;
+  function selectPlan(p) { plans.forEach(x => x.classList.toggle('selected', x === p)); }
+  $$('[data-choose]').forEach(btn => btn.addEventListener('click', () => {
+    chosen = btn.closest('.plan');
+    $('#dlgTitle').textContent = 'Тариф «' + chosen.dataset.plan + '»';
+    if (typeof dlg.showModal === 'function') dlg.showModal();
+    else { selectPlan(chosen); showToast('Выбран тариф «' + chosen.dataset.plan + '»'); }
+  }));
+  dlg.addEventListener('close', () => {
+    if (dlg.returnValue === 'ok' && chosen) {
+      selectPlan(chosen);
+      const name = $('#dlgName').value.trim();
+      showToast((name ? name + ', тариф' : 'Тариф') + ' «' + chosen.dataset.plan + '» выбран (демо)');
+    }
+    dlg.returnValue = '';
+  });
+})();
+</script>
+</body>
+</html>
